@@ -12,8 +12,9 @@
   "dependencies": {
     "@raven-os/ui": "^1.0.0",
     "@raven-os/core": "^1.0.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "@raven-os/runtime": "^1.0.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

@@ -372,7 +372,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'row',
     width: '100%',
     height: '100vh',
-    overflow: 'hidden',
+    overflow: 'auto',
   },
   webPane: {
     flex: 1,

@@ -16,11 +16,12 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      'react-native': 'react-native-web',
+      'react-native': path.resolve(__dirname, 'node_modules/react-native-web'),
       'react': path.resolve(__dirname, '../../node_modules/react'),
       'react-dom': path.resolve(__dirname, '../../node_modules/react-dom'),
       'zustand': path.resolve(__dirname, '../../node_modules/zustand'),
     },
+    dedupe: ['react', 'react-dom', 'react-native-web', 'zustand'],
     // ──────────────────────────────────────────────────────────────
     // RAVEN-OS: Platform-Aware File Resolution (Flutter-style)
     // Vite checks .web.tsx FIRST → falls back to shared .tsx

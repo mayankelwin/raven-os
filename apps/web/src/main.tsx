@@ -1,10 +1,10 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { RavenRuntime } from '@raven-os/runtime';
+import './index.css';
+import './global.css';
+import App from './App.tsx';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// The framework now owns the execution layer.
+// RavenRuntime.bootstrap() handles the root creation, sync hub, and mounting.
+RavenRuntime.bootstrap(App, {
+  rootId: 'root'
+});

@@ -8,21 +8,36 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "web": "turbo run dev --filter @apps/web",
-    "mobile": "turbo run dev --filter @apps/mobile",
-    "build": "turbo run build",
+    "dev": "node ./packages/cli/dist/index.js dev",
+    "web": "node ./packages/cli/dist/index.js dev --web",
+    "mobile": "node ./packages/cli/dist/index.js dev --mobile",
+    "build": "node ./packages/cli/dist/index.js build web",
+    "build:mobile": "node ./packages/cli/dist/index.js build android",
+    "doctor": "node ./packages/cli/dist/index.js doctor",
+    "clean": "node ./packages/cli/dist/index.js clean",
     "lint": "turbo run lint"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.27",
+    "fbjs": "^3.0.5",
+    "flow-remove-types": "^2.308.0",
+    "nativewind": "^4.2.3",
+    "postcss": "^8.5.8",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "tailwindcss": "^3.4.19",
     "turbo": "latest",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "zustand": "^5.0.12"
+    "zustand": "5.0.12"
   },
   "overrides": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "zustand": "^5.0.12"
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "zustand": "5.0.12"
+  },
+  "dependencies": {
+    "inline-style-prefixer": "^7.0.1",
+    "invariant": "^2.2.4",
+    "styleq": "^0.2.1"
   }
 }

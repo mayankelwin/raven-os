@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   View,
   Animated,
@@ -152,15 +152,15 @@ export const RavenWelcome = () => {
 
           <RavenText style={[hero.title, { color: colors.text }]}>
             Build once.{"\n"}
-            <RavenText style={{ color: colors.primary }}>
-              Ship everywhere.
+            <RavenText style={{ color: colors?.primary || '#8b5cf6' }}>
+              Potência Multi-Plataforma.
             </RavenText>
           </RavenText>
 
-          <RavenText style={[hero.sub, { color: colors.textSecondary }]}>
-            Raven-Os é o framework que unifica Web e Mobile em um único
-            ecossistema inteligente — com tema nativo, estado reativo e
-            overrides cirúrgicos por plataforma.
+          <RavenText style={[hero.sub, { color: colors?.textSecondary || '#94a3b8' }]}>
+            O Raven-Os é o motor de execução unificado para a nova era de apps 
+            **Multiplayer-First**. Sincronização nativa, criptografia E2EE e 
+            DX de elite em um único ecossistema.
           </RavenText>
 
           <View style={hero.actions}>
@@ -253,8 +253,8 @@ export const RavenWelcome = () => {
               Smart Theme
             </RavenText>
             <RavenText style={[card.body, { color: colors.textSecondary }]}>
-              Tema inteligente nativo. O sistema inverte as cores mantendo
-              contraste e legibilidade em ambas as plataformas.
+              Inversão inteligente de cores mantendo contraste e legibilidade 
+              nativa em ambas as plataformas.
             </RavenText>
             <View
               style={[
@@ -277,7 +277,7 @@ export const RavenWelcome = () => {
                 <RavenText
                   style={{ color: colors.textSecondary, fontSize: 13 }}
                 >
-                  Modo atual:{" "}
+                  Modo:{" "}
                   <RavenText
                     style={{ color: colors.primary, fontWeight: "700" }}
                   >
@@ -305,7 +305,7 @@ export const RavenWelcome = () => {
             </View>
           </View>
 
-          {/* Card 2 — Reactive State */}
+          {/* Card 2 — Reactive State (Sync) */}
           <View
             style={[
               card.base,
@@ -322,14 +322,14 @@ export const RavenWelcome = () => {
             <View
               style={[card.icon, { backgroundColor: "rgba(16,185,129,0.12)" }]}
             >
-              <RavenText style={{ fontSize: 20 }}>⚡</RavenText>
+              <RavenText style={{ fontSize: 20 }}>🔗</RavenText>
             </View>
             <RavenText style={[card.title, { color: colors.text }]}>
-              Reactive Core
+              Raven Nexus
             </RavenText>
             <RavenText style={[card.body, { color: colors.textSecondary }]}>
-              Estado unificado entre Web e Mobile com Zustand. Muda em um lugar,
-              reflete em todos.
+              Sincronização em tempo real entre dispositivos. Digite aqui e 
+              veja no seu celular (com --network).
             </RavenText>
             <View
               style={[
@@ -342,39 +342,15 @@ export const RavenWelcome = () => {
                 },
               ]}
             >
-              <RavenText
-                style={{
-                  color: colors.textMuted,
-                  fontSize: 12,
-                  marginBottom: 10,
-                }}
-              >
-                Universal Counter
-              </RavenText>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 16 }}
-              >
-                <RavenText
-                  style={{
-                    color: colors.primary,
-                    fontSize: 40,
-                    fontWeight: "900",
-                  }}
-                >
-                  {store.demoCounter}
-                </RavenText>
-                <TouchableOpacity
-                  onPress={store.incrementCounter}
-                  style={[counter.btn, { backgroundColor: colors.primary }]}
-                  activeOpacity={0.8}
-                >
-                  <RavenText
-                    style={{ color: "#fff", fontWeight: "700", fontSize: 18 }}
-                  >
-                    +
-                  </RavenText>
-                </TouchableOpacity>
-              </View>
+               <View style={{ gap: 8 }}>
+                  <View style={{ height: 32, borderRadius: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, justifyContent: 'center' }}>
+                     <RavenText style={{ color: colors.textSecondary, fontSize: 13 }}>Nexus Hub: Connected</RavenText>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#10b981' }} />
+                     <RavenText style={{ color: colors.textMuted, fontSize: 10 }}>P2P Delta Relay Active</RavenText>
+                  </View>
+               </View>
             </View>
           </View>
 
@@ -398,11 +374,11 @@ export const RavenWelcome = () => {
               <RavenText style={{ fontSize: 20 }}>🦾</RavenText>
             </View>
             <RavenText style={[card.title, { color: colors.text }]}>
-              Platform Override
+              Platform Native
             </RavenText>
             <RavenText style={[card.body, { color: colors.textSecondary }]}>
-              Bug só no mobile? Crie um override cirúrgico sem tocar no Web.
-              Nível Raven.
+              Código unificado com overrides cirúrgicos onde importa. Zero 
+              compromisso com a experiência de usuário.
             </RavenText>
             <View
               style={[
@@ -416,52 +392,98 @@ export const RavenWelcome = () => {
               ]}
             >
               <RavenStack gap={6}>
-                {[
-                  {
-                    file: "Button.tsx",
-                    label: "shared",
-                    color: colors.textMuted,
-                  },
-                  {
-                    file: "Button.native.tsx",
-                    label: "mobile only",
-                    color: colors.secondary,
-                  },
-                  {
-                    file: "Button.web.tsx",
-                    label: "web only",
-                    color: colors.primary,
-                  },
-                ].map((row, i) => (
-                  <View key={i} style={override.row}>
-                    <RavenText
-                      style={{
-                        color: row.color,
-                        fontSize: 12,
-                        fontFamily: "monospace",
-                      }}
-                    >
-                      {row.file}
-                    </RavenText>
-                    <View
-                      style={[
-                        override.badge,
-                        { backgroundColor: `${row.color}22` },
-                      ]}
-                    >
-                      <RavenText
-                        style={{
-                          color: row.color,
-                          fontSize: 10,
-                          fontWeight: "700",
-                        }}
-                      >
-                        {row.label}
-                      </RavenText>
-                    </View>
-                  </View>
-                ))}
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
+                    <RavenText style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'monospace' }}>Button.web.tsx</RavenText>
+                 </View>
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.secondary }} />
+                    <RavenText style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'monospace' }}>Button.native.tsx</RavenText>
+                 </View>
               </RavenStack>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Engine Room Section ── */}
+        <View style={section.wrap}>
+          <RavenText style={[section.tag, { color: colors.secondary }]}>
+            ADVANCED ENGINE ROOM
+          </RavenText>
+          <RavenText style={[section.title, { color: colors.text }]}>
+            O Core de Próxima Geração.
+          </RavenText>
+          <RavenText style={[section.sub, { color: colors.textSecondary }]}>
+            Segurança, Observabilidade e Performance integradas no DNA do framework.
+          </RavenText>
+        </View>
+
+        <View style={[grid.wrap, isWide && { flexDirection: "row" }]}>
+          {/* Card 4 — E2EE */}
+          <View
+            style={[
+              card.base,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                flex: 1,
+              },
+            ]}
+          >
+            <View
+              style={[card.icon, { backgroundColor: "rgba(139,92,246,0.12)" }]}
+            >
+              <RavenText style={{ fontSize: 20 }}>🔒</RavenText>
+            </View>
+            <RavenText style={[card.title, { color: colors.text }]}>
+              Quantum E2EE
+            </RavenText>
+            <RavenText style={[card.body, { color: colors.textSecondary }]}>
+              Criptografia de Ponta-a-Ponta AES-GCM 256-bit nativa. Privacidade 
+              por design em cada delta sincronizado.
+            </RavenText>
+            <View style={[card.demo, { borderColor: colors?.secondary || '#10b981', borderWidth: 1, backgroundColor: `${colors?.secondary || '#10b981'}11` }]}>
+                <RavenText style={{ color: colors?.secondary || '#10b981', fontWeight: 'bold', textAlign: 'center' }}>
+                   SECURE SESSION: ACTIVE
+                </RavenText>
+                <RavenText style={{ color: colors?.textMuted || '#475569', fontSize: 10, textAlign: 'center', marginTop: 4 }}>
+                   0x87A...F92 (RavenCrypt V1)
+                </RavenText>
+            </View>
+          </View>
+
+          {/* Card 5 — DevCockpit */}
+          <View
+            style={[
+              card.base,
+              {
+                backgroundColor: colors?.surface || 'rgba(255,255,255,0.04)',
+                borderColor: colors?.border || 'rgba(255,255,255,0.07)',
+                flex: 1,
+              },
+            ]}
+          >
+            <View
+              style={[card.icon, { backgroundColor: "rgba(236,72,153,0.12)" }]}
+            >
+              <RavenText style={{ fontSize: 20 }}>🧠</RavenText>
+            </View>
+            <RavenText style={[card.title, { color: colors?.text || '#f1f5f9' }]}>
+              Dev Cockpit
+            </RavenText>
+            <RavenText style={[card.body, { color: colors?.textSecondary || '#94a3b8' }]}>
+              Observabilidade total. Time-Travel, Grafo de Módulos e telemetria 
+              integrados diretamente no runtime.
+            </RavenText>
+            <View style={[card.demo, { backgroundColor: '#000' }]}>
+                <View style={{ flexDirection: 'row', gap: 4, marginBottom: 8 }}>
+                   {[10, 30, 20, 50, 40].map((h, i) => (
+                      <View key={i} style={{ flex: 1, height: h * 0.5, backgroundColor: colors?.primary || '#8b5cf6', borderRadius: 2 }} />
+                   ))}
+                </View>
+                <RavenText style={{ color: colors?.textMuted || '#475569', fontSize: 10, textAlign: 'center' }}>
+                   Live Telemetry Stream
+                </RavenText>
             </View>
           </View>
         </View>
@@ -529,10 +551,10 @@ const hero = {
     paddingHorizontal: isWide ? 48 : 24,
     paddingTop: 72,
     paddingBottom: 56,
-    width: '100%' as const,
+    width: "100%" as const,
   } as ViewStyle,
   tag: {
-    alignSelf: 'flex-start' as const,
+    alignSelf: "flex-start" as const,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
@@ -541,17 +563,22 @@ const hero = {
   } as ViewStyle,
   title: {
     fontSize: isWide ? 64 : 38,
-    fontWeight: '900' as const,
+    fontWeight: "900" as const,
     letterSpacing: -2,
     lineHeight: isWide ? 72 : 46,
     marginBottom: 20,
   } as TextStyle,
-  sub: { fontSize: isWide ? 18 : 16, lineHeight: 28, marginBottom: 36, maxWidth: isWide ? 600 : undefined } as TextStyle,
+  sub: {
+    fontSize: isWide ? 18 : 16,
+    lineHeight: 28,
+    marginBottom: 36,
+    maxWidth: isWide ? 600 : undefined,
+  } as TextStyle,
   actions: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
     gap: 12,
-    flexWrap: 'wrap' as const,
+    flexWrap: "wrap" as const,
   } as ViewStyle,
   ghostBtn: {
     paddingHorizontal: 24,

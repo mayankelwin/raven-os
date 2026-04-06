@@ -1,3 +1,4 @@
+/// <reference types="nativewind/types" />
 import React from 'react';
 import { 
   View, 
@@ -35,15 +36,37 @@ export const RavenColors = {
 
 // --- Fundamental Components ---
 
-export const RavenView = ({ children, style }: { children: React.ReactNode, style?: ViewStyle }) => {
-  return <View style={[styles.container, style]}>{children}</View>;
+export const RavenView = ({ children, style, className }: { children: React.ReactNode, style?: ViewStyle, className?: string }) => {
+  return <View style={[styles.container, style]} className={className}>{children}</View>;
 };
 
-export const RavenText = ({ children, variant = 'body', style }: { children: React.ReactNode, variant?: 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'caption', style?: StyleProp<TextStyle> }) => {
-  return <Text style={[styles.text, styles[variant as keyof typeof styles], style]}>{children}</Text>;
+export const RavenText = ({ 
+  children, 
+  variant = 'body', 
+  style,
+  className 
+}: { 
+  children: React.ReactNode, 
+  variant?: 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'caption', 
+  style?: StyleProp<TextStyle>,
+  className?: string
+}) => {
+  return <Text style={[styles.text, styles[variant as keyof typeof styles], style]} className={className}>{children}</Text>;
 };
 
-export const RavenButton = ({ title, onPress, variant = 'primary', style }: { title: string, onPress: () => void, variant?: 'primary' | 'secondary' | 'accent' | 'outline', style?: ViewStyle }) => {
+export const RavenButton = ({ 
+  title, 
+  onPress, 
+  variant = 'primary', 
+  style,
+  className
+}: { 
+  title: string, 
+  onPress: () => void, 
+  variant?: 'primary' | 'secondary' | 'accent' | 'outline', 
+  style?: ViewStyle,
+  className?: string
+}) => {
   const buttonStyle = [
     styles.button,
     variant === 'secondary' && { backgroundColor: RavenColors.secondary },
@@ -57,15 +80,19 @@ export const RavenButton = ({ title, onPress, variant = 'primary', style }: { ti
       activeOpacity={0.7}
       onPress={onPress} 
       style={buttonStyle}
+      className={className}
     >
       <Text style={[styles.buttonText, variant === 'outline' && { color: RavenColors.text }]}>{title}</Text>
     </TouchableOpacity>
   );
 };
 
-export const RavenCard = ({ children, style, glass = true }: { children: React.ReactNode, style?: ViewStyle, glass?: boolean }) => {
+export const RavenCard = ({ children, style, glass = true, className }: { children: React.ReactNode, style?: ViewStyle, glass?: boolean, className?: string }) => {
   return (
-    <View style={[styles.card, !glass && { backgroundColor: RavenColors.surfaceDeeper }, style]}>
+    <View 
+      style={[styles.card, !glass && { backgroundColor: RavenColors.surfaceDeeper }, style]} 
+      className={className}
+    >
       {children}
     </View>
   );
