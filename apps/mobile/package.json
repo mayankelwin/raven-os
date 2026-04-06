@@ -1,0 +1,29 @@
+{
+  "name": "@apps/mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "expo start -c",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@raven-os/core": "^1.0.0",
+    "@raven-os/ui": "^1.0.0",
+    "expo": "~54.0.33",
+    "expo-status-bar": "~3.0.9",
+    "nativewind": "4.2.3",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "semver": "^7.7.4"
+  },
+  "devDependencies": {
+    "babel-plugin-module-resolver": "^5.0.0",
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
