@@ -85,7 +85,11 @@ export class RavenDevServer {
       platform: os.platform(),
       arch: os.arch(),
       rooms: this.rooms.size,
-      nexusKeys: Object.keys(this.nexusState).length
+      nexusKeys: Object.keys(this.nexusState).reduce((acc, room) => acc + Object.keys(this.nexusState[room]).length, 0),
+      clients: Array.from(this.wss?.clients || []).map((c: any) => ({ 
+          id: c.clientId, 
+          rooms: Array.from(c.rooms || []) 
+      }))
     };
   }
 
@@ -200,6 +204,57 @@ export class RavenDevServer {
           res.writeHead(200, { 'Content-Type': 'application/javascript' });
           return res.end(fs.readFileSync(bundlePath));
         }
+      }
+
+      if (url === '/api/studio/update' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk.toString(); });
+          req.on('end', () => {
+              try {
+                  const { room, key, value } = JSON.parse(body);
+                  if (room && key) {
+                      const roomState = this.nexusState[room] || {};
+                      roomState[key] = value;
+                      this.nexusState[room] = roomState;
+                      this.saveDb();
+                      this.broadcastToRoom(room, { type: 'nexus-delta', room, key, value, clientId: 'nexus-studio' });
+                      res.writeHead(200);
+                      res.end(JSON.stringify({ success: true }));
+                  }
+              } catch (e) {
+                  res.writeHead(400);
+                  res.end(JSON.stringify({ error: 'Invalid payload' }));
+              }
+          });
+          return;
+      }
+
+      if (url === '/api/studio/delete' && req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk.toString(); });
+          req.on('end', () => {
+              try {
+                  const { room, key, id, type } = JSON.parse(body);
+                  if (room && type === 'key' && key) {
+                      delete this.nexusState[room][key];
+                      this.saveDb();
+                      this.broadcastToRoom(room, { type: 'nexus-delta', room, key, value: null, clientId: 'nexus-studio' });
+                  } else if (room && type === 'collection' && key && id) {
+                      const collection = this.nexusState[room][key];
+                      if (Array.isArray(collection)) {
+                          this.nexusState[room][key] = collection.filter((i: any) => i.id !== id);
+                          this.saveDb();
+                          this.broadcastToRoom(room, { type: 'nexus-coll-remove', room, collection: key, id, clientId: 'nexus-studio' });
+                      }
+                  }
+                  res.writeHead(200);
+                  res.end(JSON.stringify({ success: true }));
+              } catch (e) {
+                  res.writeHead(400);
+                  res.end(JSON.stringify({ error: 'Invalid payload' }));
+              }
+          });
+          return;
       }
 
       if (url === '/' || !url.includes('.')) {
