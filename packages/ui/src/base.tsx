@@ -59,19 +59,22 @@ export const RavenButton = ({
   onPress, 
   variant = 'primary', 
   style,
-  className
+  className,
+  disabled
 }: { 
   title: string, 
   onPress: () => void, 
   variant?: 'primary' | 'secondary' | 'accent' | 'outline', 
   style?: ViewStyle,
-  className?: string
+  className?: string,
+  disabled?: boolean
 }) => {
   const buttonStyle = [
     styles.button,
     variant === 'secondary' && { backgroundColor: RavenColors.secondary },
     variant === 'accent' && { backgroundColor: RavenColors.accent },
     variant === 'outline' && styles.buttonOutline,
+    disabled && { opacity: 0.5, backgroundColor: RavenColors.textMuted },
     style
   ];
 
@@ -81,6 +84,7 @@ export const RavenButton = ({
       onPress={onPress} 
       style={buttonStyle}
       className={className}
+      disabled={disabled}
     >
       <Text style={[styles.buttonText, variant === 'outline' && { color: RavenColors.text }]}>{title}</Text>
     </TouchableOpacity>

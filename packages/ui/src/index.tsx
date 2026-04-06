@@ -16,6 +16,16 @@ export * from './base';
 // Welcome screen
 export * from './RavenWelcome';
 export * from './RavenLoader';
+export * from './NexusGuard';
+
+// Pro Components (V34-V38)
+export * from './pro/AuthGuard';
+export * from './pro/NexusList';
+export * from './pro/NexusForm';
+export * from './pro/NexusDataTable';
+export * from './pro/NexusLogicButton';
+export * from './pro/NexusMetricCard';
+export * from './pro/NexusPresenceGrid';
 
 // Platform-aware components
 // These have .native.tsx and/or .web.tsx overrides alongside them.

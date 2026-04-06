@@ -15,6 +15,7 @@
     "build:mobile": "node ./packages/cli/dist/index.js build android",
     "doctor": "node ./packages/cli/dist/index.js doctor",
     "clean": "node ./packages/cli/dist/index.js clean",
+    "nexus": "node ./packages/cli/dist/index.js nexus",
     "lint": "turbo run lint"
   },
   "devDependencies": {

@@ -5,12 +5,16 @@ import { RavenLogger } from './logger.js';
 import { WebSocketServer, WebSocket } from 'ws';
 import os from 'os';
 import qrcode from 'qrcode-terminal';
+import { RavenLogicRunner } from './logic.js';
+import { SupabaseBridge } from '../bridges/supabase.js';
+import { NexusBridge } from '../bridges/bridge.js';
 
 export interface DevServerOptions {
   port: number;
   root: string;
   distDir: string;
   network?: boolean;
+  relayUrl?: string; // V34: Nexus Edge Relay
 }
 
 export type HMRMessage = 
@@ -34,8 +38,109 @@ export class RavenDevServer {
   private clientCounter = 0;
   private rooms: Map<string, WebSocket[]> = new Map();
   private nexusJournal: Map<string, any[]> = new Map(); // Roll buffer for Time Travel
+  private nexusState: Record<string, any> = {}; // Persistent Key-Value Store
+  private dbPath: string;
+  private relayClient: WebSocket | null = null; // V34: Remote Relay
+  private logic: RavenLogicRunner; // V35: Server-side Logic
+  private logBuffer: string[] = []; // V37: Log buffer for Studio
+  private bridges: NexusBridge[] = []; // V41: Symmetry Bridges
 
-  constructor(private options: DevServerOptions) {}
+  constructor(private options: DevServerOptions) {
+    this.dbPath = path.join(options.root, '.raven', 'nexus_db.json');
+    this.ensureDb();
+    
+    // V34: Setup Nexus Edge Relay
+    if (options.relayUrl) {
+      this.setupRelay(options.relayUrl);
+    }
+
+    this.logic = new RavenLogicRunner(options.root);
+
+    // V41: Initialize Symmetry Bridges (Load from config in V42)
+    this.setupBridges();
+
+    // V41: Setup Real-time Logging Hook
+    RavenLogger.onLog = (msg, type) => {
+      const timestamp = new Date().toLocaleTimeString();
+      this.logBuffer.push(`[${timestamp}] [${type.toUpperCase()}] ${msg}`);
+      if (this.logBuffer.length > 100) this.logBuffer.shift(); // Circular buffer
+    };
+  }
+
+  private getPerformanceMetrics() {
+    const freeMem = os.freemem();
+    const totalMem = os.totalmem();
+    const usedMem = totalMem - freeMem;
+    const cpuLoad = os.loadavg()[0]; // 1-minute load average
+    const uptime = process.uptime();
+
+    return {
+      cpu: Math.min(100, (cpuLoad / os.cpus().length) * 100).toFixed(1),
+      memory: {
+        used: (usedMem / 1024 / 1024).toFixed(0),
+        total: (totalMem / 1024 / 1024).toFixed(0),
+        percent: ((usedMem / totalMem) * 100).toFixed(1)
+      },
+      uptime: Math.floor(uptime),
+      platform: os.platform(),
+      arch: os.arch(),
+      rooms: this.rooms.size,
+      nexusKeys: Object.keys(this.nexusState).length
+    };
+  }
+
+  private setupRelay(url: string) {
+    try {
+      this.relayClient = new WebSocket(url);
+      this.relayClient.on('open', () => {
+        RavenLogger.success(`[NEXUS EDGE] Relay Active: ${url}`);
+        this.relayClient?.send(JSON.stringify({ type: 'sync', state: this.nexusState }));
+      });
+      this.relayClient.on('error', (e: any) => {
+        RavenLogger.error(`[NEXUS EDGE] Relay Connection Failed: ${e.message}`);
+      });
+    } catch (e: any) {
+      RavenLogger.error(`[NEXUS EDGE] Invalid Relay URL: ${url}`);
+    }
+  }
+
+  private ensureDb() {
+    if (!fs.existsSync(path.dirname(this.dbPath))) {
+      fs.mkdirSync(path.dirname(this.dbPath), { recursive: true });
+    }
+    if (fs.existsSync(this.dbPath)) {
+      try {
+        this.nexusState = JSON.parse(fs.readFileSync(this.dbPath, 'utf8'));
+      } catch (e) {
+        this.nexusState = {};
+      }
+    }
+  }
+
+  private saveDb() {
+    try {
+      fs.writeFileSync(this.dbPath, JSON.stringify(this.nexusState, null, 2));
+    } catch (e: any) {
+      RavenLogger.error('[NEXUS] DB Save Failed', e.message);
+    }
+  }
+
+  private setupBridges() {
+    // Mocking a Supabase bridge for the showcase
+    const supabase = new SupabaseBridge({
+      id: 'supabase-main',
+      enabled: false, // Initially disabled until configured in Studio
+      options: { url: 'https://xyz.supabase.co', key: 'sb_key_123' }
+    });
+    this.bridges.push(supabase);
+  }
+
+  private relayToBridges(type: 'delta' | 'coll-add', room: string, keyOrColl: string, valueOrItem: any) {
+    this.bridges.forEach(bridge => {
+      if (type === 'delta') bridge.onDelta(room, keyOrColl, valueOrItem);
+      else if (type === 'coll-add') bridge.onCollectionAdd(room, keyOrColl, valueOrItem);
+    });
+  }
 
   async start() {
     const { port, distDir, network } = this.options;
@@ -50,6 +155,42 @@ export class RavenDevServer {
           if (fs.existsSync(metaPath)) {
               res.writeHead(200, { 'Content-Type': 'application/json' });
               return res.end(fs.readFileSync(metaPath));
+          }
+      }
+
+      // V37: Nexus Studio API (Highest Priority)
+      if (url === '/api/studio/state') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify({ 
+            state: this.nexusState, 
+            functions: this.logic.getRegistry(), 
+            logs: this.logBuffer,
+            metrics: this.getPerformanceMetrics()
+          }));
+      }
+
+      // V41: Specific Metrics Endpoint
+      if (url === '/api/studio/metrics') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          return res.end(JSON.stringify(this.getPerformanceMetrics()));
+      }
+
+      // V37: Nexus Studio Visual Dashboard
+      if (url === '/studio' || url === '/studio/') {
+          const studioPath = path.join(this.options.root, 'packages', 'cli', 'src', 'core', 'studio.html');
+          
+          if (fs.existsSync(studioPath)) {
+              res.writeHead(200, { 'Content-Type': 'text/html' });
+              return res.end(fs.readFileSync(studioPath));
+          } else {
+              const fallbackPath = path.join(process.cwd(), 'packages', 'cli', 'src', 'core', 'studio.html');
+              if (fs.existsSync(fallbackPath)) {
+                  res.writeHead(200, { 'Content-Type': 'text/html' });
+                  return res.end(fs.readFileSync(fallbackPath));
+              }
+              
+              res.writeHead(200, { 'Content-Type': 'text/html' });
+              return res.end('<h1>Nexus Studio</h1><p>Path not found: ' + studioPath + '</p>');
           }
       }
 
@@ -86,15 +227,71 @@ export class RavenDevServer {
           } else if (message.type === 'nexus-req-state') {
             this.handleStateRequest(message.room, ws);
           } else if (message.type === 'nexus-delta') {
-            // Journaling for Time Travel
+            // 1. Journaling for Time Travel
             this.journalDelta(message.room, { ...message, clientId });
+            
+            // 2. GLOBAL PERSISTENCE (V32)
+            if (message.key && message.value !== undefined) {
+              const roomState = this.nexusState[message.room] || {};
+              roomState[message.key] = message.value;
+              this.nexusState[message.room] = roomState;
+              this.saveDb();
+              
+              // V35: Delta Trigger
+              this.runTriggers('onDelta', message.key, message.value, message.room, ws);
+              
+              // V41: Symmetry Bridge Relay
+              this.relayToBridges('delta', message.room, message.key, message.value);
+            }
+
             this.broadcastToRoom(message.room, { ...message, clientId }, ws);
+          } else if (message.type === 'nexus-coll-add') {
+             // V33: Add to Collection
+             const roomState = this.nexusState[message.room] || {};
+             const collection = roomState[message.collection] || [];
+             collection.push(message.item);
+             roomState[message.collection] = collection;
+             this.nexusState[message.room] = roomState;
+             this.saveDb();
+             this.broadcastToRoom(message.room, message, ws);
+
+             // V35: Collection Trigger
+             this.runTriggers('onCollection', message.collection, message.item, message.room, ws);
+
+             // V41: Symmetry Bridge Relay
+             this.relayToBridges('coll-add', message.room, message.collection, message.item);
+          } else if (message.type === 'nexus-coll-update') {
+             // V33: Update in Collection
+             const roomState = this.nexusState[message.room] || {};
+             const collection = roomState[message.collection] || [];
+             const idx = collection.findIndex((i: any) => i.id === message.id);
+             if (idx !== -1) {
+                collection[idx] = { ...collection[idx], ...message.item };
+                roomState[message.collection] = collection;
+                this.nexusState[message.room] = roomState;
+                this.saveDb();
+                this.broadcastToRoom(message.room, message, ws);
+             }
+          } else if (message.type === 'nexus-coll-remove') {
+             // V33: Remove from Collection
+             const roomState = this.nexusState[message.room] || {};
+             const collection = roomState[message.collection] || [];
+             roomState[message.collection] = collection.filter((i: any) => i.id !== message.id);
+             this.nexusState[message.room] = roomState;
+             this.saveDb();
+             this.broadcastToRoom(message.room, message, ws);
           } else if (message.type === 'nexus-presence') {
             this.broadcastToRoom(message.room, { ...message, clientId }, ws);
-          } else if (message.type === 'sync') {
-            this.broadcast(message, ws);
+          } else if (message.type === 'nexus-call') {
+            // V35: Direct Logic Call
+            this.handleLogicCall(message, ws);
           }
-        } catch (e) { }
+
+          // V34: Mirror all messages to Nexus Edge Relay
+          if (this.relayClient && this.relayClient.readyState === WebSocket.OPEN) {
+             this.relayClient.send(JSON.stringify(message));
+          }
+        } catch (e: any) { }
       });
       
       ws.on('close', () => {
@@ -115,7 +312,9 @@ export class RavenDevServer {
           }
       }
       
-      RavenLogger.success(`[NEXUS V3] Stability & Time-Travel Engine: http://localhost:${port}`);
+      
+      RavenLogger.success(`[NEXUS V3] Stability Engine: http://localhost:${port}`);
+      RavenLogger.info(`[STUDIO] Visual Dashboard: http://localhost:${port}/studio`);
       
       if (network) {
           RavenLogger.info(`[NETWORK] Discovery active at: http://${localIP}:${port}`);
@@ -141,6 +340,17 @@ export class RavenDevServer {
     const activeClients = this.rooms.get(room)!;
     if (activeClients.length > 1) {
         ws.send(JSON.stringify({ type: 'nexus-req-state', room }));
+    } else if (this.nexusState[room]) {
+        // V32: Fallback to Persistent Hub if no peers are online
+        Object.entries(this.nexusState[room]).forEach(([key, value]) => {
+          ws.send(JSON.stringify({ 
+            type: 'nexus-delta', 
+            room, 
+            key, 
+            value,
+            clientId: 'nexus-hub'
+          }));
+        });
     }
   }
 
@@ -153,6 +363,47 @@ export class RavenDevServer {
     if (senior && senior.readyState === WebSocket.OPEN) {
         senior.send(JSON.stringify({ type: 'nexus-req-state-from-peer', room, requesterId: requester.clientId }));
     }
+  }
+
+  // --- V35: Nexus Logic Runner Helpers ---
+
+  private async handleLogicCall(message: any, ws: WebSocket) {
+    const ctx = this.getNexusContext(message.room, (ws as any).clientId);
+    try {
+      const result = await this.logic.trigger(message.name, 'onCall', message.data, ctx);
+      ws.send(JSON.stringify({ 
+        type: 'nexus-call-res', 
+        callId: message.callId, 
+        result 
+      }));
+    } catch (e: any) {
+      ws.send(JSON.stringify({ 
+        type: 'nexus-call-res', 
+        callId: message.callId, 
+        error: e.message 
+      }));
+    }
+  }
+
+  private runTriggers(type: string, name: string, data: any, room: string, originWs: WebSocket) {
+    const ctx = this.getNexusContext(room, (originWs as any).clientId);
+    this.logic.trigger(name, type, data, ctx);
+  }
+
+  private getNexusContext(room: string, clientId: string) {
+    return {
+      state: this.nexusState[room] || {},
+      room,
+      clientId,
+      broadcast: (msg: any) => this.broadcastToRoom(room, msg),
+      update: (key: string, value: any) => {
+        const rState = this.nexusState[room] || {};
+        rState[key] = value;
+        this.nexusState[room] = rState;
+        this.saveDb();
+        this.broadcastToRoom(room, { type: 'nexus-delta', room, key, value, clientId: 'nexus-logic' });
+      }
+    };
   }
 
   private leaveAllRooms(ws: any) {

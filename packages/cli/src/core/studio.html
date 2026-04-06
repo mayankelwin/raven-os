@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Studio Elite (V41)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; background: #020617; color: #f1f5f9; overflow: hidden; }
+        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .tab-active { color: #8b5cf6; background: rgba(139, 92, 246, 0.1); border-left: 3px solid #8b5cf6; }
+        .glow-text { text-shadow: 0 0 12px rgba(139, 92, 246, 0.3); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        .sidebar-icon { @apply w-5 h-5 transition-all; }
+        .nav-btn { @apply flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-all; }
+    </style>
+</head>
+<body class="h-screen flex">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 border-r border-white/5 flex flex-col glass z-50">
+        <div class="p-6 border-b border-white/5 flex items-center gap-3">
+            <div class="w-2.5 h-2.5 rounded-full bg-violet-500 animate-pulse"></div>
+            <h1 class="font-extrabold tracking-tighter text-lg uppercase italic">Nexus <span class="text-violet-500 text-sm">Elite</span></h1>
+        </div>
+        
+        <nav class="flex-1 py-4">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn tab-active w-full text-left">
+                <i data-lucide="layout-dashboard" class="sidebar-icon"></i> Dashboard
+            </button>
+            <button onclick="switchTab('explorer')" id="nav-explorer" class="nav-btn w-full text-left">
+                <i data-lucide="database" class="sidebar-icon"></i> Data Explorer
+            </button>
+            <button onclick="switchTab('logic')" id="nav-logic" class="nav-btn w-full text-left">
+                <i data-lucide="cpu" class="sidebar-icon"></i> Logic Cockpit
+            </button>
+            <button onclick="switchTab('integrations')" id="nav-integrations" class="nav-btn w-full text-left">
+                <i data-lucide="plug" class="sidebar-icon"></i> Integrations
+            </button>
+            <button onclick="switchTab('logs')" id="nav-logs" class="nav-btn w-full text-left">
+                <i data-lucide="terminal" class="sidebar-icon"></i> Hub Terminal
+            </button>
+        </nav>
+
+        <div class="p-6 border-t border-white/5 space-y-4">
+            <div class="flex items-center justify-between text-[10px] uppercase tracking-widest font-black text-slate-500">
+                <span>System Status</span>
+                <span class="text-emerald-400">Stable</span>
+            </div>
+            <div class="h-1 bg-white/5 rounded-full overflow-hidden">
+                <div id="sys-load-bar" class="h-full bg-violet-500 transition-all duration-1000" style="width: 24%"></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Header -->
+        <header class="h-16 border-b border-white/5 flex items-center px-8 justify-between glass">
+            <div class="flex items-center gap-2">
+                <span class="text-slate-500 font-bold text-xs uppercase tracking-widest" id="breadcrumb-active">Dashboard</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-end">
+                    <span id="host-platform" class="text-[10px] font-mono text-slate-500">PLATFORM: --</span>
+                    <span id="host-uptime" class="text-[10px] font-mono text-violet-400">UPTIME: 0s</span>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-500/20 to-fuchsia-500/20 border border-violet-500/20 flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-violet-400"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Viewport -->
+        <div class="flex-1 overflow-y-auto p-8 relative">
+            
+            <!-- Tab: Dashboard -->
+            <section id="view-dashboard" class="space-y-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="glass p-6 rounded-3xl relative overflow-hidden group">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <i data-lucide="activity" class="w-12 h-12"></i>
+                        </div>
+                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">CPU LOAD</p>
+                        <h2 class="text-4xl font-extrabold tracking-tighter" id="metric-cpu">0%</h2>
+                    </div>
+                    <div class="glass p-6 rounded-3xl relative overflow-hidden group">
+                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">RAM USAGE</p>
+                        <h2 class="text-4xl font-extrabold tracking-tighter" id="metric-ram">0 MB</h2>
+                        <p class="text-[10px] text-slate-400 mt-2 font-mono" id="metric-ram-percent">--</p>
+                    </div>
+                    <div class="glass p-6 rounded-3xl">
+                        <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">ACTIVE ROOMS</p>
+                        <h2 class="text-4xl font-extrabold tracking-tighter" id="metric-rooms">0</h2>
+                    </div>
+                    <div class="glass p-6 rounded-3xl text-violet-400 ring-2 ring-violet-500/10">
+                        <p class="text-violet-500/60 text-[10px] font-black uppercase tracking-widest mb-1">NEXUS KEYS</p>
+                        <h2 class="text-4xl font-extrabold tracking-tighter" id="metric-keys">0</h2>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 h-[400px]">
+                    <div class="glass p-6 rounded-3xl flex flex-col">
+                        <h3 class="text-sm font-bold mb-4 flex items-center gap-2">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-violet-500"></i> Real-time Performance
+                        </h3>
+                        <div class="flex-1">
+                            <canvas id="perfChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-6">
+                        <div class="glass p-6 rounded-3xl flex flex-col">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-sm font-bold flex items-center gap-2">
+                                    <i data-lucide="sun-moon" class="w-4 h-4 text-violet-500"></i> Theme Pro Engine
+                                </h3>
+                                <div class="bg-emerald-500/10 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded ring-1 ring-emerald-500/20">ACTIVE</div>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-slate-400 font-semibold">Automatic Mode</span>
+                                    <div class="w-10 h-5 bg-violet-600 rounded-full relative p-1 cursor-pointer">
+                                        <div class="w-3 h-3 bg-white rounded-full absolute right-1"></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-slate-400 font-semibold">Transition Strategy</span>
+                                    <select class="bg-white/5 border border-white/10 rounded-lg text-[10px] px-2 py-1 text-slate-300 outline-none">
+                                        <option value="system">System Preference</option>
+                                        <option value="time">Time of Day (18:00)</option>
+                                    </select>
+                                </div>
+                                <p class="text-[9px] text-slate-500 italic mt-2 italic">Theme Guardian is currently monitoring system schemes.</p>
+                            </div>
+                        </div>
+                        <div class="glass p-6 rounded-3xl flex-1 flex flex-col overflow-hidden">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-sm font-bold flex items-center gap-2">
+                                    <i data-lucide="history" class="w-4 h-4 text-violet-500"></i> Recent Sync Events
+                                </h3>
+                            </div>
+                            <div id="sync-history" class="flex-1 space-y-3 overflow-y-auto">
+                                <!-- Events injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Explorer -->
+            <section id="view-explorer" class="hidden space-y-6">
+                <div class="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/5">
+                    <div class="flex gap-4">
+                        <input type="text" placeholder="Filter Database..." class="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm w-80 ring-violet-500/20 focus:ring-4 transition-all">
+                    </div>
+                    <button onclick="fetchState()" class="bg-violet-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-violet-400 transition-all">REFRESH</button>
+                </div>
+                <div class="glass rounded-3xl overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="text-[10px] text-slate-500 border-b border-white/10 bg-white/5">
+                            <tr>
+                                <th class="p-4 pl-8 uppercase font-black">Room</th>
+                                <th class="p-4 uppercase font-black">Key</th>
+                                <th class="p-4 uppercase font-black">Data</th>
+                                <th class="p-4 uppercase font-black text-right pr-8">Control</th>
+                            </tr>
+                        </thead>
+                        <tbody id="explorer-table" class="divide-y divide-white/5">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Tab: Integrations -->
+            <section id="view-integrations" class="hidden space-y-6">
+                <div class="mb-8">
+                    <h2 class="text-3xl font-black">Symmetry Bridges</h2>
+                    <p class="text-slate-400 text-sm mt-1">Connect your local Nexus Engine to industrial cloud providers.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass p-8 rounded-3xl border-t-4 border-emerald-500/40 hover:translate-y-[-4px] transition-all">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
+                                <i data-lucide="zap" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-lg">Supabase</h4>
+                                <p class="text-[10px] text-emerald-400 font-bold uppercase">Official Bridge</p>
+                            </div>
+                        </div>
+                        <ul class="space-y-3 mb-8 text-xs text-slate-400 font-semibold">
+                            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-3 h-3 text-emerald-400"></i> Real-time DB Sync</li>
+                            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-3 h-3 text-emerald-400"></i> Edge Logic Relay</li>
+                        </ul>
+                        <button class="w-full bg-emerald-500 py-3 rounded-2xl text-xs font-black text-emerald-950 uppercase hover:bg-emerald-400 transition-all">Enable Bridge</button>
+                    </div>
+
+                    <div class="glass p-8 rounded-3xl opacity-50 grayscale border-t-4 border-slate-500/40">
+                         <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-400">
+                                <i data-lucide="flame" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-lg">Firebase</h4>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">v42 Coming Soon</p>
+                            </div>
+                        </div>
+                        <button disabled class="w-full bg-white/5 py-3 rounded-2xl text-xs font-black text-slate-500 uppercase cursor-not-allowed">Coming Soon</button>
+                    </div>
+
+                    <div class="glass p-8 rounded-3xl opacity-50 grayscale border-t-4 border-slate-500/40">
+                         <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400">
+                                <i data-lucide="database" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-lg">MariaDB / SQL</h4>
+                                <p class="text-[10px] text-slate-500 font-bold uppercase">v43 Roadmap</p>
+                            </div>
+                        </div>
+                        <button disabled class="w-full bg-white/5 py-3 rounded-2xl text-xs font-black text-slate-500 uppercase cursor-not-allowed">Roadmap</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Logic -->
+            <section id="view-logic" class="hidden space-y-6">
+                <div id="logic-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Injected -->
+                </div>
+            </section>
+
+            <!-- Tab: Logs -->
+            <section id="view-logs" class="hidden h-full flex flex-col">
+                <div class="glass rounded-3xl h-[600px] flex flex-col overflow-hidden border-violet-500/10 ring-2 ring-violet-500/5">
+                    <div class="p-4 border-b border-white/5 bg-slate-950/40 flex justify-between items-center">
+                        <h3 class="text-xs font-black flex items-center gap-2 tracking-widest uppercase text-slate-400">
+                            <i data-lucide="terminal" class="w-3 h-3"></i> System Stream
+                        </h3>
+                    </div>
+                    <div id="log-console" class="flex-1 p-6 mono text-[10px] overflow-y-auto space-y-1 bg-black/40">
+                        <!-- Injected -->
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        let currentTab = 'dashboard';
+        let perfChart = null;
+
+        function switchTab(tab) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
+            
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`nav-${tab}`).classList.add('tab-active');
+            document.getElementById('breadcrumb-active').innerText = tab.toUpperCase();
+            currentTab = tab;
+            lucide.createIcons();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('perfChart').getContext('2d');
+            perfChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [
+                        { label: 'CPU %', data: Array(20).fill(0), borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', fill: true, tension: 0.4 },
+                        { label: 'RAM %', data: Array(20).fill(0), borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', fill: true, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false, min: 0, max: 100 },
+                        x: { display: false }
+                    }
+                }
+            });
+        }
+
+        async function fetchState() {
+            try {
+                const res = await fetch('/api/studio/state');
+                const data = await res.json();
+                renderUI(data);
+                updateCharts(data.metrics);
+            } catch (e) {
+                console.error('Studio fetch failed', e);
+            }
+        }
+
+        function updateCharts(metrics) {
+            if (!perfChart) return;
+            const labels = perfChart.data.labels;
+            const cpuData = perfChart.data.datasets[0].data;
+            const ramData = perfChart.data.datasets[1].data;
+
+            cpuData.shift();
+            cpuData.push(parseFloat(metrics.cpu));
+            ramData.shift();
+            ramData.push(parseFloat(metrics.memory.percent));
+
+            perfChart.update('none');
+        }
+
+        function renderUI(data) {
+            const explorerTable = document.getElementById('explorer-table');
+            const logicGrid = document.getElementById('logic-grid');
+            const consoleDiv = document.getElementById('log-console');
+            
+            // Metrics
+            document.getElementById('metric-cpu').innerText = `${data.metrics.cpu}%`;
+            document.getElementById('metric-ram').innerText = `${data.metrics.memory.used} MB`;
+            document.getElementById('metric-ram-percent').innerText = `${data.metrics.memory.percent}% OF ${data.metrics.memory.total}MB`;
+            document.getElementById('metric-rooms').innerText = data.metrics.rooms;
+            document.getElementById('metric-keys').innerText = data.metrics.nexusKeys;
+            document.getElementById('sys-load-bar').style.width = `${data.metrics.cpu}%`;
+            document.getElementById('host-platform').innerText = `PLATFORM: ${data.metrics.platform.toUpperCase()} (${data.metrics.arch.toUpperCase()})`;
+            document.getElementById('host-uptime').innerText = `UPTIME: ${data.metrics.uptime}S`;
+
+            // Data Explorer
+            explorerTable.innerHTML = '';
+            Object.keys(data.state).forEach(room => {
+                const rState = data.state[room];
+                Object.keys(rState).forEach(key => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-white/5 transition-colors group';
+                    tr.innerHTML = `
+                        <td class="p-4 pl-8 font-mono text-[10px] text-slate-500">${room}</td>
+                        <td class="p-4 font-bold text-violet-400 text-xs">${key}</td>
+                        <td class="p-4 font-mono text-[10px] truncate max-w-xs text-slate-300">
+                            ${JSON.stringify(rState[key]).substring(0, 50)}...
+                        </td>
+                        <td class="p-4 text-right pr-8">
+                           <button class="text-white/10 group-hover:text-violet-400 transition-colors">
+                               <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                           </button>
+                        </td>
+                    `;
+                    explorerTable.appendChild(tr);
+                });
+            });
+
+            // Logic Cockpit
+            logicGrid.innerHTML = '';
+            data.functions.forEach(f => {
+                const card = document.createElement('div');
+                card.className = 'glass p-6 rounded-3xl flex items-center justify-between group hover:border-violet-500/40 transition-all';
+                card.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="bg-violet-500/10 w-12 h-12 rounded-2xl flex items-center justify-center text-violet-400">
+                            <i data-lucide="zap" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-black text-slate-100">${f.name}</h4>
+                            <p class="text-[10px] text-slate-500 uppercase tracking-widest font-black ring-1 ring-white/5 inline-block px-2 py-0.5 rounded mt-1">${f.trigger}</p>
+                        </div>
+                    </div>
+                    <button class="bg-white/5 px-6 py-2.5 rounded-2xl border border-white/5 text-[10px] uppercase font-black hover:bg-violet-500 hover:text-white transition-all tracking-widest">Invoke</button>
+                `;
+                logicGrid.appendChild(card);
+            });
+
+            // Logs
+            consoleDiv.innerHTML = '';
+            data.logs.forEach(msg => {
+                const p = document.createElement('p');
+                p.className = msg.includes('ERROR') ? 'text-rose-500' : (msg.includes('SUCCESS') ? 'text-emerald-400' : 'text-slate-400');
+                p.innerText = `${msg}`;
+                consoleDiv.appendChild(p);
+            });
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+
+            lucide.createIcons();
+        }
+
+        // Setup
+        initChart();
+        switchTab('dashboard');
+        setInterval(fetchState, 2000);
+        fetchState();
+        lucide.createIcons();
+    </script>
+</body>
+</html>

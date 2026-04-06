@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import React, { createContext, useContext, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { RavenThemes } from './theme';
+import { RavenThemes, type RavenThemeColors } from './theme';
 import { RavenStorage, type RavenStorageEngine } from './storage';
 
 /**
@@ -39,7 +39,11 @@ interface RavenState {
   devMenuOpen: boolean;
   devDashboardOpen: boolean;
   devErrorModalOpen: boolean;
+  themeMode: 'manual' | 'auto'; // V42: Theme Pro
+  themeStrategy: 'system' | 'time'; // V42: Theme Pro
   setTheme: (theme: 'dark' | 'light') => void;
+  setThemeMode: (mode: 'manual' | 'auto') => void;
+  setThemeStrategy: (strategy: 'system' | 'time') => void;
   toggleTheme: () => void;
   setInitialized: (val: boolean) => void;
   setReady: (val: boolean) => void;
@@ -68,35 +72,49 @@ export const useRavenStore = create<RavenState>((set) => ({
   devSplitScreen: true,
   devDeviceType: 'android',
   devMenuOpen: false,
+  runtimeErrors: [],
   devDashboardOpen: false,
-  setTheme: (theme) => {
-    set({ theme });
+  devErrorModalOpen: false,
+  themeMode: 'manual',
+  themeStrategy: 'system',
+  setTheme: (theme: 'dark' | 'light') => {
+    set({ theme, themeMode: 'manual' });
     RavenStorage.set('raven_theme', theme);
+    RavenStorage.set('raven_theme_mode', 'manual');
   },
-  toggleTheme: () => set((state) => {
+  setThemeMode: (themeMode: 'manual' | 'auto') => {
+    set({ themeMode });
+    RavenStorage.set('raven_theme_mode', themeMode);
+  },
+  setThemeStrategy: (themeStrategy: 'system' | 'time') => {
+    set({ themeStrategy });
+    RavenStorage.set('raven_theme_strategy', themeStrategy);
+  },
+  toggleTheme: () => set((state: RavenState) => {
     const next = state.theme === 'dark' ? 'light' : 'dark';
     RavenStorage.set('raven_theme', next);
-    return { theme: next };
+    RavenStorage.set('raven_theme_mode', 'manual');
+    return { theme: next, themeMode: 'manual' } as Partial<RavenState>;
   }),
-  setInitialized: (val) => set({ isInitialized: val }),
-  setReady: (val) => set({ isReady: val }),
-  setError: (err) => set({ error: err }),
-  incrementCounter: () => set((state) => ({ demoCounter: state.demoCounter + 1 })),
-  toggleOptimization: () => set((state) => ({ isOptimizationActive: !state.isOptimizationActive })),
-  setPerformanceScore: (score) => set({ performanceScore: score }),
-  addRuntimeError: (err) => set((state) => ({ 
+  setInitialized: (val: boolean) => set({ isInitialized: val }),
+  setReady: (val: boolean) => set({ isReady: val }),
+  setError: (err: string | null) => set({ error: err }),
+  incrementCounter: () => set((state: RavenState) => ({ demoCounter: state.demoCounter + 1 })),
+  toggleOptimization: () => set((state: RavenState) => ({ isOptimizationActive: !state.isOptimizationActive })),
+  setPerformanceScore: (score: number) => set({ performanceScore: score }),
+  addRuntimeError: (err: RavenErrorInfo) => set((state: RavenState) => ({ 
     runtimeErrors: [err, ...state.runtimeErrors].slice(0, 5),
     devErrorModalOpen: state.runtimeErrors.length === 0 // Auto-open on first error
   })),
   clearErrors: () => set({ runtimeErrors: [], devErrorModalOpen: false }),
-  toggleDevSplitScreen: () => set((state) => ({ devSplitScreen: !state.devSplitScreen, devMenuOpen: false })),
-  toggleDevDevice: () => set((state) => {
+  toggleDevSplitScreen: () => set((state: RavenState) => ({ devSplitScreen: !state.devSplitScreen, devMenuOpen: false })),
+  toggleDevDevice: () => set((state: RavenState) => {
     const next = state.devDeviceType === 'android' ? 'iphone' : 'android';
     return { devDeviceType: next };
   }),
-  toggleDevMenu: () => set((state) => ({ devMenuOpen: !state.devMenuOpen })),
-  toggleDevDashboard: () => set((state) => ({ devDashboardOpen: !state.devDashboardOpen, devMenuOpen: false })),
-  toggleDevErrorModal: (open) => set((state) => ({ 
+  toggleDevMenu: () => set((state: RavenState) => ({ devMenuOpen: !state.devMenuOpen })),
+  toggleDevDashboard: () => set((state: RavenState) => ({ devDashboardOpen: !state.devDashboardOpen, devMenuOpen: false })),
+  toggleDevErrorModal: (open?: boolean) => set((state: RavenState) => ({ 
     devErrorModalOpen: open !== undefined ? open : !state.devErrorModalOpen,
     devMenuOpen: false 
   })),
@@ -114,7 +132,7 @@ interface RavenProviderProps {
   onInit?: () => Promise<void>;
 }
 
-const RavenContext = createContext<RavenState | null>(null);
+export const RavenContext = createContext<RavenState | null>(null);
 
 export const RavenProvider = ({ children, storage, loader, onInit }: RavenProviderProps) => {
   const store = useRavenStore();
@@ -129,11 +147,14 @@ export const RavenProvider = ({ children, storage, loader, onInit }: RavenProvid
           RavenStorage.engine = storage;
         }
 
-        // 2. Load Persisted Theme
+        // 2. Load Persisted Theme & Theme Pro Settings
         const savedTheme = await RavenStorage.get<'dark' | 'light'>('raven_theme');
-        if (savedTheme) {
-          store.setTheme(savedTheme);
-        }
+        const savedMode = await RavenStorage.get<'manual' | 'auto'>('raven_theme_mode');
+        const savedStrategy = await RavenStorage.get<'system' | 'time'>('raven_theme_strategy');
+
+        if (savedTheme) store.setTheme(savedTheme);
+        if (savedMode) store.setThemeMode(savedMode);
+        if (savedStrategy) store.setThemeStrategy(savedStrategy);
 
         // 4. Post-initialization stability delay
         await new Promise(resolve => setTimeout(resolve, 800));
@@ -180,7 +201,28 @@ export const RavenProvider = ({ children, storage, loader, onInit }: RavenProvid
     }
 
     init();
-  }, []);
+
+    // 4. ThemeGuardian (V42): Periodic theme check
+    const guardianInterval = setInterval(() => {
+      if (store.themeMode === 'auto') {
+        if (store.themeStrategy === 'time') {
+          const hour = new Date().getHours();
+          const nextTheme = (hour >= 18 || hour < 6) ? 'dark' : 'light';
+          if (store.theme !== nextTheme) {
+            store.setTheme(nextTheme);
+          }
+        } else if (store.themeStrategy === 'system' && typeof window !== 'undefined') {
+          const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const nextTheme = isDark ? 'dark' : 'light';
+          if (store.theme !== nextTheme) {
+            store.setTheme(nextTheme);
+          }
+        }
+      }
+    }, 1000 * 60 * 5); // 5 minute guard
+
+    return () => clearInterval(guardianInterval);
+  }, [store.themeMode, store.themeStrategy, store.theme]);
 
   // 5. Restoration Guard (V23): If we have errors, we bypass the loader
   // so the Diagnostic Overlay can actually show what's wrong.
@@ -222,9 +264,13 @@ export type { RavenStorageEngine } from './storage';
 export { RavenThemes } from './theme';
 export type { RavenThemeColors, RavenThemeMode } from './theme';
 
-// --- Nexus System ---
+// --- Nexus System (V32 Unified Sync) ---
+export { RavenNexusManager, useNexus, useNexusCollection, useNexusFunction } from './nexus';
 export { RavenCrypt } from './nexus/crypto';
 export { NexusDB } from './nexus/db';
+
+// --- Auth Symmetry (V34 Unified Identity) ---
+export { useRavenAuth, RavenAuthProvider } from './auth';
 
 /**
  * useRavenTheme — The main hook for theme-aware components.
@@ -234,7 +280,7 @@ export const useRavenTheme = () => {
   const store = useRavenStore();
   const colors = RavenThemes[store.theme];
   return {
-    colors,
+    colors: colors as RavenThemeColors,
     theme: store.theme,
     isDark: store.theme === 'dark',
     toggleTheme: store.toggleTheme,

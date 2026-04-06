@@ -5,6 +5,9 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "react-native": "^0.81.5",
     "react-native-web": "^0.21.2"

@@ -5,6 +5,9 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
     "zustand": "^5.0.12"
   },

@@ -6,6 +6,7 @@ import { RavenDevCommand } from './commands/dev.js';
 import { RavenBuildCommand } from './commands/build.js';
 import { RavenDoctorCommand } from './commands/doctor.js';
 import { RavenCleanCommand } from './commands/clean.js';
+import { RavenNexusCommand } from './commands/nexus.js';
 
 const program = new Command();
 import { RavenEngine } from './core/engine.js';
@@ -131,9 +132,41 @@ program
   .action(async () => {
     const config = await init();
     await RavenCleanCommand(config);
-    // Also clean the .raven/cache
-    const cache = new RavenEngine(config); 
-    // Manual clear if needed, but clean.ts handles most
+    // Also clean the .cache if needed
+    const engine = new RavenEngine(config); 
+  });
+
+// --- Nexus DB Commands (V33) ---
+const nexus = program.command('nexus').description('NexusDB Management Explorer');
+
+nexus.command('ls')
+  .description('List all active Nexus collections')
+  .action(async () => {
+    const config = await init();
+    await RavenNexusCommand.ls(config);
+  });
+
+nexus.command('view <name>')
+  .description('View collection content in a table')
+  .option('-r, --room <room>', 'Nexus room name', 'DEFAULT')
+  .action(async (name, options) => {
+    const config = await init();
+    await RavenNexusCommand.view(config, name, options.room);
+  });
+
+nexus.command('drop <name>')
+  .description('Delete a collection from NexusDB')
+  .option('-r, --room <room>', 'Nexus room name', 'DEFAULT')
+  .action(async (name, options) => {
+    const config = await init();
+    await RavenNexusCommand.drop(config, name, options.room);
+  });
+
+nexus.command('clear')
+  .description('Wipe the entire local NexusDB')
+  .action(async () => {
+    const config = await init();
+    await RavenNexusCommand.clear(config);
   });
 
 program.parse(process.argv);

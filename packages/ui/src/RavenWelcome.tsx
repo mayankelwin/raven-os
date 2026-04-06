@@ -9,13 +9,27 @@ import {
   type ViewStyle,
   type TextStyle,
 } from "react-native";
-import { useRaven, useRavenTheme } from "@raven-os/core";
+import { 
+  useRaven, 
+  useRavenTheme, 
+  RavenPlatform, 
+  ravenConfig, 
+  useNexus,
+  useNexusCollection,
+  useRavenAuth,
+  useNexusFunction
+} from '@raven-os/core';
 import {
   RavenText,
   RavenButton,
   RavenStack,
   RavenBackgroundGlow,
+  RavenCard
 } from "./base";
+import { NexusGuard } from "./NexusGuard";
+import { NexusMetricCard } from "./pro/NexusMetricCard";
+import { NexusPresenceGrid } from "./pro/NexusPresenceGrid";
+import { NexusLogicButton } from "./pro/NexusLogicButton";
 
 const { width } = Dimensions.get("window");
 const isWide = width > 900;
@@ -23,9 +37,17 @@ const isWide = width > 900;
 export const RavenWelcome = () => {
   const store = useRaven();
   const { colors, isDark, toggleTheme } = useRavenTheme();
+  const { call } = useNexusFunction();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
+
+  // 1. NexusDB Persistent Sync (V32)
+  const [nexusCount, setNexusCount] = useNexus('global_count', 0);
+  const [nexusMsg, setNexusMsg] = useNexus('global_msg', 'Nexus is Active');
+  
+  // 2. Nexus Collections (V33)
+  const users = useNexusCollection<{ id: string, name: string, role: string }>('users');
 
   useEffect(() => {
     Animated.parallel([
@@ -75,25 +97,43 @@ export const RavenWelcome = () => {
           {/* Theme Toggle */}
           <TouchableOpacity
             onPress={toggleTheme}
+            onLongPress={() => store.setThemeMode(store.themeMode === 'auto' ? 'manual' : 'auto')}
             style={[
               topBar.themeToggle,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
             activeOpacity={0.7}
           >
-            <RavenText style={{ fontSize: 14 }}>
-              {isDark ? "☀️" : "🌙"}
-            </RavenText>
-            <RavenText
-              style={{
-                color: colors.textSecondary,
-                fontSize: 13,
-                fontWeight: "600",
-                marginLeft: 6,
-              }}
-            >
-              {isDark ? "Light" : "Dark"}
-            </RavenText>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <RavenText style={{ fontSize: 13 }}>
+                {isDark ? "☀️" : "🌙"}
+              </RavenText>
+              <RavenText
+                style={{
+                  color: colors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  marginLeft: 5,
+                }}
+              >
+                {isDark ? "Light" : "Dark"}
+              </RavenText>
+              {store.themeMode === 'auto' && (
+                <View 
+                  style={{ 
+                    marginLeft: 6, 
+                    paddingHorizontal: 5, 
+                    paddingVertical: 1, 
+                    backgroundColor: colors.primary + '20', 
+                    borderRadius: 4,
+                    borderWidth: 0.5,
+                    borderColor: colors.primary + '40'
+                  }}
+                >
+                  <RavenText style={{ color: colors.primary, fontSize: 9, fontWeight: '800' }}>AUTO</RavenText>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
           <View
             style={[
@@ -305,7 +345,7 @@ export const RavenWelcome = () => {
             </View>
           </View>
 
-          {/* Card 2 — Reactive State (Sync) */}
+          {/* Card 2 — NexusDB (V32 Persistent Sync) */}
           <View
             style={[
               card.base,
@@ -322,14 +362,14 @@ export const RavenWelcome = () => {
             <View
               style={[card.icon, { backgroundColor: "rgba(16,185,129,0.12)" }]}
             >
-              <RavenText style={{ fontSize: 20 }}>🔗</RavenText>
+              <RavenText style={{ fontSize: 20 }}>🌌</RavenText>
             </View>
             <RavenText style={[card.title, { color: colors.text }]}>
-              Raven Nexus
+              NexusDB Unified
             </RavenText>
             <RavenText style={[card.body, { color: colors.textSecondary }]}>
-              Sincronização em tempo real entre dispositivos. Digite aqui e 
-              veja no seu celular (com --network).
+              Banco de dados unificado com persistência automática no servidor. 
+              Sincroniza Web e Mobile instantaneamente.
             </RavenText>
             <View
               style={[
@@ -342,16 +382,69 @@ export const RavenWelcome = () => {
                 },
               ]}
             >
-               <View style={{ gap: 8 }}>
-                  <View style={{ height: 32, borderRadius: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, justifyContent: 'center' }}>
-                     <RavenText style={{ color: colors.textSecondary, fontSize: 13 }}>Nexus Hub: Connected</RavenText>
+               <View style={{ gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <RavenText style={{ color: colors.textSecondary, fontSize: 13 }}>Symmetry Count:</RavenText>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                      <TouchableOpacity onPress={() => setNexusCount(nexusCount - 1)} style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                        <RavenText style={{ color: colors.text }}>-</RavenText>
+                      </TouchableOpacity>
+                      <RavenText style={{ color: colors.primary, fontWeight: '800', fontSize: 16 }}>{nexusCount}</RavenText>
+                      <TouchableOpacity onPress={() => setNexusCount(nexusCount + 1)} style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' }}>
+                        <RavenText style={{ color: colors.text }}>+</RavenText>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#10b981' }} />
-                     <RavenText style={{ color: colors.textMuted, fontSize: 10 }}>P2P Delta Relay Active</RavenText>
+                  
+                  <View style={{ height: 1, backgroundColor: colors.border }} />
+
+                  <View style={{ gap: 4 }}>
+                    <RavenText style={{ color: colors.textMuted, fontSize: 10, textTransform: 'uppercase' }}>Global Nexus Message</RavenText>
+                    <View style={{ padding: 8, backgroundColor: colors.background, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}>
+                      <RavenText style={{ color: colors.textSecondary, fontSize: 12 }}>{nexusMsg}</RavenText>
+                    </View>
                   </View>
                </View>
             </View>
+          </View>
+          
+          {/* Card 2.5 — Nexus Collections (V33) */}
+          <View
+            style={[
+              card.base,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                flex: 1,
+              },
+            ]}
+          >
+             <View style={[card.icon, { backgroundColor: "rgba(139,92,246,0.12)" }]}>
+                <RavenText style={{ fontSize: 20 }}>👥</RavenText>
+             </View>
+             <RavenText style={[card.title, { color: colors.text }]}>
+                Dynamic Collections (V33)
+             </RavenText>
+             <RavenText style={[card.body, { color: colors.textSecondary }]}>
+                Autonomia total. Crie coleções e adicione registros direto do frontend.
+             </RavenText>
+             
+             <View style={card.demo}>
+                <NexusGuard 
+                  collection="users" 
+                  onProvision={(add) => add({ name: 'Admin Raven', role: 'Founder' })}
+                >
+                   <View style={{ gap: 8 }}>
+                      <RavenText style={{ color: colors.textSecondary, fontSize: 12 }}>
+                         Users count: {users.data.length}
+                      </RavenText>
+                      <RavenButton 
+                        title="Add User" 
+                        onPress={() => users.add({ name: `Dev ${users.data.length + 1}`, role: 'Engineer' })} 
+                      />
+                   </View>
+                </NexusGuard>
+             </View>
           </View>
 
           {/* Card 3 — Platform Override */}
@@ -419,7 +512,7 @@ export const RavenWelcome = () => {
         </View>
 
         <View style={[grid.wrap, isWide && { flexDirection: "row" }]}>
-          {/* Card 4 — E2EE */}
+          {/* Card 3 — Auth Symmetry (V34) */}
           <View
             style={[
               card.base,
@@ -430,60 +523,107 @@ export const RavenWelcome = () => {
               },
             ]}
           >
-            <View
-              style={[card.icon, { backgroundColor: "rgba(139,92,246,0.12)" }]}
-            >
-              <RavenText style={{ fontSize: 20 }}>🔒</RavenText>
-            </View>
-            <RavenText style={[card.title, { color: colors.text }]}>
-              Quantum E2EE
-            </RavenText>
-            <RavenText style={[card.body, { color: colors.textSecondary }]}>
-              Criptografia de Ponta-a-Ponta AES-GCM 256-bit nativa. Privacidade 
-              por design em cada delta sincronizado.
-            </RavenText>
-            <View style={[card.demo, { borderColor: colors?.secondary || '#10b981', borderWidth: 1, backgroundColor: `${colors?.secondary || '#10b981'}11` }]}>
-                <RavenText style={{ color: colors?.secondary || '#10b981', fontWeight: 'bold', textAlign: 'center' }}>
-                   SECURE SESSION: ACTIVE
-                </RavenText>
-                <RavenText style={{ color: colors?.textMuted || '#475569', fontSize: 10, textAlign: 'center', marginTop: 4 }}>
-                   0x87A...F92 (RavenCrypt V1)
-                </RavenText>
-            </View>
+             <View style={[card.icon, { backgroundColor: "rgba(245,158,11,0.12)" }]}>
+                <RavenText style={{ fontSize: 20 }}>🆔</RavenText>
+             </View>
+             <RavenText style={[card.title, { color: colors.text }]}>
+                Auth Symmetry
+             </RavenText>
+             <RavenText style={[card.body, { color: colors.textSecondary }]}>
+                Identidade unificada com E2EE. Login seguro sincronizado via Nexus Edge.
+             </RavenText>
+             
+             <View style={card.demo}>
+                <View style={{ gap: 8 }}>
+                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.secondary }} />
+                      <RavenText style={{ color: colors.textMuted, fontSize: 11 }}>RELAY: edge.raven-os.dev</RavenText>
+                   </View>
+                   <View style={{ padding: 10, backgroundColor: colors.background, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                      <RavenText style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '700' }}>
+                         Global Identity Active
+                      </RavenText>
+                      <RavenText style={{ color: colors.textMuted, fontSize: 10 }}>
+                         Session: Symmetric AES-256
+                      </RavenText>
+                   </View>
+                </View>
+             </View>
           </View>
 
-          {/* Card 5 — DevCockpit */}
+          {/* Card 4 — Nexus Logic (V35) */}
           <View
             style={[
               card.base,
               {
-                backgroundColor: colors?.surface || 'rgba(255,255,255,0.04)',
-                borderColor: colors?.border || 'rgba(255,255,255,0.07)',
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
                 flex: 1,
               },
             ]}
           >
-            <View
-              style={[card.icon, { backgroundColor: "rgba(236,72,153,0.12)" }]}
-            >
-              <RavenText style={{ fontSize: 20 }}>🧠</RavenText>
-            </View>
-            <RavenText style={[card.title, { color: colors?.text || '#f1f5f9' }]}>
-              Dev Cockpit
-            </RavenText>
-            <RavenText style={[card.body, { color: colors?.textSecondary || '#94a3b8' }]}>
-              Observabilidade total. Time-Travel, Grafo de Módulos e telemetria 
-              integrados diretamente no runtime.
-            </RavenText>
-            <View style={[card.demo, { backgroundColor: '#000' }]}>
-                <View style={{ flexDirection: 'row', gap: 4, marginBottom: 8 }}>
-                   {[10, 30, 20, 50, 40].map((h, i) => (
-                      <View key={i} style={{ flex: 1, height: h * 0.5, backgroundColor: colors?.primary || '#8b5cf6', borderRadius: 2 }} />
-                   ))}
+             <View style={[card.icon, { backgroundColor: "rgba(16,185,129,0.12)" }]}>
+                <RavenText style={{ fontSize: 20 }}>🧠</RavenText>
+             </View>
+             <RavenText style={[card.title, { color: colors.text }]}>
+                Nexus Logic
+             </RavenText>
+             <RavenText style={[card.body, { color: colors.textSecondary }]}>
+                Processamento pesado e automações no servidor via Server-side Functions.
+             </RavenText>
+             
+             <View style={card.demo}>
+                <View style={{ gap: 8 }}>
+                   <View style={{ padding: 10, backgroundColor: colors.background, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                      <RavenText style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700' }}>
+                         RPC: sum(10, 20)
+                      </RavenText>
+                      <RavenText style={{ color: colors.secondary, fontSize: 14, fontWeight: '900', marginTop: 4 }}>
+                         Result: 30
+                      </RavenText>
+                   </View>
+                   <RavenText style={{ color: colors.textMuted, fontSize: 9 }}>
+                      Hot-Reloading: nexus/functions/index.ts
+                   </RavenText>
                 </View>
-                <RavenText style={{ color: colors?.textMuted || '#475569', fontSize: 10, textAlign: 'center' }}>
-                   Live Telemetry Stream
-                </RavenText>
+             </View>
+          </View>
+        </View>
+
+
+        {/* ── Nexus Pro Ecosystem (V38) ── */}
+        <View style={{ paddingHorizontal: 24, marginTop: 48, gap: 24 }}>
+          <View style={{ gap: 4 }}>
+             <RavenText style={{ fontSize: 24, fontWeight: '900', color: colors.text }}>Nexus Pro Ecosystem</RavenText>
+             <RavenText style={{ fontSize: 13, color: colors.textSecondary }}>Componentes inteligentes de alto nível integrados ao NexusDB.</RavenText>
+          </View>
+
+          <View style={{ flexDirection: isWide ? 'row' : 'column', gap: 16 }}>
+            <View style={{ flex: 1, gap: 16 }}>
+              <NexusMetricCard 
+                label="Global Sync Events"
+                name="sync_count"
+                defaultValue={1240}
+                suffix="+"
+              />
+              <RavenCard style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface }}>
+                 <RavenText style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12, fontWeight: '700' }}>PRESENÇA EM TEMPO REAL</RavenText>
+                 <NexusPresenceGrid limit={4} />
+              </RavenCard>
+            </View>
+
+            <View style={{ flex: 1.5, gap: 16 }}>
+               <RavenCard style={{ padding: 20, borderRadius: 20, backgroundColor: colors.surface, borderLeftWidth: 4, borderLeftColor: colors.primary }}>
+                  <RavenText style={{ fontSize: 14, fontWeight: '800', color: colors.text }}>Controle de Sincronização</RavenText>
+                  <RavenText style={{ fontSize: 12, color: colors.textSecondary, marginTop: 4, marginBottom: 16 }}>
+                    Dispare funções pesadas no servidor com feedback visual nativo.
+                  </RavenText>
+                  <NexusLogicButton 
+                    title="Forçar Re-Sync Global"
+                    functionName="rebuild_index"
+                    payload={{ force: true }}
+                  />
+               </RavenCard>
             </View>
           </View>
         </View>
